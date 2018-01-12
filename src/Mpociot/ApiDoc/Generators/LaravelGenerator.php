@@ -15,6 +15,8 @@ use ReflectionClass;
 
 class LaravelGenerator extends AbstractGenerator
 {
+    private $bearerHeader;
+
     /**
      * @param Route $route
      *
@@ -77,6 +79,7 @@ class LaravelGenerator extends AbstractGenerator
                 }
             }
             if (!$response){
+                array_push($headers, $this->getBearerHeader());
                 $response = $this->getRouteResponse($route, $bindings, $headers);
             }
             if ($response->headers->get('Content-Type') === 'application/json'){
@@ -99,6 +102,42 @@ class LaravelGenerator extends AbstractGenerator
         ], $routeAction, $bindings);
     }
 
+    public function getBearerHeader($refresh = false)
+    {
+        /**
+         * "username": "sketcompani@gmail.com",
+         * "password": 123456
+         */
+
+        if (!$this->bearerHeader || $refresh){
+            $response = $this->callRoute('POST', '/api/login', [
+                'username' => "sketcompani@gmail.com",
+                'password' => 123456,
+            ]);
+//            $response = $this->callRoute('POST', '/api/login', [], [], [], [], json_encode([
+//                'username' => "sketcompani@gmail.com",
+//                'password' => 123456,
+//            ]));
+
+            $content = json_decode($response->content(), true);
+
+            $this->bearerHeader = "Authorization:{$content['token_type']} {$content['access_token']}";
+        }
+
+        return $this->bearerHeader;
+
+//        $client = new GuzzleHttp\Client();
+//        $res = $client->request('GET', 'https://api.github.com/user', [
+//            'auth' => ['user', 'pass']
+//        ]);
+//        echo $res->getStatusCode();
+//// "200"
+//        echo $res->getHeader('content-type');
+//// 'application/json; charset=utf8'
+//        echo $res->getBody();
+//// {"type":"User"...'
+    }
+
     /**
      * Prepares / Disables route middlewares.
      *
@@ -108,7 +147,7 @@ class LaravelGenerator extends AbstractGenerator
      */
     public function prepareMiddleware($disable = true)
     {
-        App::instance('middleware.disable', true);
+        App::instance('middleware.disable', $disable);
     }
 
     /**
@@ -380,27 +419,25 @@ class LaravelGenerator extends AbstractGenerator
         list($class, $method) = explode('@', $route);
 
         $reflection = new ReflectionClass($class);
-        $reflectionMethod = $reflection->getMethod($method);
-        $methodPhpdoc = new DocBlock($reflectionMethod->getDocComment());
+        $methodPhpdoc = new DocBlock($reflection->getMethod($method)
+            ->getDocComment());
 
         if (isset($methods[$method])){
-            $classPhpDoc = new DocBlock((new ReflectionClass($class))->getDocComment());
+            $classPhpDoc = new DocBlock($reflection->getDocComment());
+
             $shortDescription = strtr($methods[$method], [
                 '{0}' => $classPhpDoc->getShortDescription(),
             ]);
         } else {
             $shortDescription = $methodPhpdoc->getShortDescription();
         }
-
         $shortDescription = self::transliterate($shortDescription);
 
-        $response = [
+        return [
             'short' => $shortDescription,
             'long'  => $methodPhpdoc->getLongDescription()
                 ->getContents(),
             'tags'  => $methodPhpdoc->getTags(),
         ];
-
-        return $response;
     }
 }
