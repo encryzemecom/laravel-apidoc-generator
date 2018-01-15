@@ -12,6 +12,7 @@ use League\Fractal\Resource\Item;
 use Mpociot\Reflection\DocBlock;
 use Mpociot\Reflection\DocBlock\Tag;
 use ReflectionClass;
+use SehrGut\Laravel5_Api\Exceptions\Http\HttpException;
 
 class LaravelGenerator extends AbstractGenerator
 {
@@ -102,40 +103,33 @@ class LaravelGenerator extends AbstractGenerator
         ], $routeAction, $bindings);
     }
 
+    /**
+     * @param bool $refresh
+     *
+     * @return string
+     * @throws HttpException
+     */
     public function getBearerHeader($refresh = false)
     {
-        /**
-         * "username": "sketcompani@gmail.com",
-         * "password": 123456
-         */
+        $data = \Config::get('apidocs');
+
+        if (!$data){
+            throw new HttpException('Not exists file config "config/apidoc.php". Pleace copy file from folder "config/example/"');
+        }
 
         if (!$this->bearerHeader || $refresh){
-            $response = $this->callRoute('POST', '/api/login', [
-                'username' => "sketcompani@gmail.com",
-                'password' => 123456,
-            ]);
-//            $response = $this->callRoute('POST', '/api/login', [], [], [], [], json_encode([
-//                'username' => "sketcompani@gmail.com",
-//                'password' => 123456,
-//            ]));
+            $response = $this->callRoute('POST', '/api/login', $data, [], [], [], json_encode($data));
 
             $content = json_decode($response->content(), true);
+
+            if (!$content || !isset($content['token_type'], $content['access_token'])){
+                throw new HttpException('Error to bearer token request');
+            }
 
             $this->bearerHeader = "Authorization:{$content['token_type']} {$content['access_token']}";
         }
 
         return $this->bearerHeader;
-
-//        $client = new GuzzleHttp\Client();
-//        $res = $client->request('GET', 'https://api.github.com/user', [
-//            'auth' => ['user', 'pass']
-//        ]);
-//        echo $res->getStatusCode();
-//// "200"
-//        echo $res->getHeader('content-type');
-//// 'application/json; charset=utf8'
-//        echo $res->getBody();
-//// {"type":"User"...'
     }
 
     /**
