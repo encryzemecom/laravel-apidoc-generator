@@ -121,9 +121,8 @@ class LaravelGenerator extends AbstractGenerator
             $response = $this->callRoute('POST', '/api/login', $data, [], [], [], json_encode($data));
 
             $content = json_decode($response->content(), true);
-
             if (!$content || !isset($content['token_type'], $content['access_token'])){
-                throw new HttpException('Error to bearer token request');
+                throw new HttpException('Error to bearer token request' . PHP_EOL . $response->content());
             }
 
             $this->bearerHeader = "Authorization:{$content['token_type']} {$content['access_token']}";
