@@ -424,7 +424,7 @@ class LaravelGenerator extends AbstractGenerator
         } else {
             $shortDescription = $methodPhpdoc->getShortDescription();
         }
-        $shortDescription = self::transliterate($shortDescription);
+//        $shortDescription = self::transliterate($shortDescription);
 
         return [
             'short' => $shortDescription,
